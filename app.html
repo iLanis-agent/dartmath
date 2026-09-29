@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DartMath - calculator</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #101a14; color: #eef5ef; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+  main { max-width: 740px; padding: 32px 20px 48px; width: 100%; box-sizing: border-box; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; }
+  p.sub { color: #b9cdbd; margin: 0 0 20px; }
+  .card { background: #15211a; border: 1px solid #2a4030; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 1.05rem; color: #d8e9dc; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+  label { display: block; color: #a3b8a8; font-size: 0.82rem; margin-bottom: 4px; }
+  input, select { width: 100%; box-sizing: border-box; background: #101a14; border: 1px solid #35513d; color: #eef5ef; border-radius: 8px; padding: 9px 10px; font-size: 0.95rem; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .presets button { background: #1d2e23; color: #dceadd; border: 1px solid #35513d; border-radius: 999px; padding: 7px 14px; font-size: 0.85rem; cursor: pointer; }
+  .presets button:hover { background: #2a4030; }
+  .out { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .metric { background: #101a14; border: 1px solid #2a4030; border-radius: 10px; padding: 12px 14px; }
+  .metric .v { font-size: 1.3rem; font-weight: 700; color: #f2c94c; }
+  .metric .k { color: #a3b8a8; font-size: 0.78rem; margin-top: 2px; }
+  .note { color: #8aa28f; font-size: 0.82rem; line-height: 1.5; margin-top: 10px; }
+  a.back { color: #f2c94c; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>&#127919; DartMath</h1>
+  <p class="sub">Checkouts computed, not memorized.</p>
+  <div class="presets">
+    <button data-p="max">The 170 question</button>
+    <button data-p="impossible">Stuck on 169</button>
+    <button data-p="pub">Pub player</button>
+    <button data-p="league">League night</button>
+  </div>
+  <div class="card">
+    <h2>1. Checkout</h2>
+    <div class="grid">
+      <div><label>Score remaining (2-170)</label><input id="score" type="number" value="121" min="2" max="170"></div>
+      <div><label>Darts in hand</label><select id="darts"><option value="3" selected>3</option><option value="2">2</option><option value="1">1</option></select></div>
+    </div>
+    <div class="out" style="margin-top:12px">
+      <div class="metric"><div class="v" id="o-route">-</div><div class="k">Computed route</div></div>
+      <div class="metric"><div class="v" id="o-darts">-</div><div class="k">Darts needed</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>2. Bust check</h2>
+    <div class="grid">
+      <div><label>Remaining before the dart</label><input id="bustScore" type="number" value="40" min="2"></div>
+      <div><label>Dart thrown (T20, D16, 17, BULL, 25)</label><input id="dart" type="text" value="T20"></div>
+    </div>
+    <div class="out" style="margin-top:12px">
+      <div class="metric"><div class="v" id="o-bust">-</div><div class="k">Result</div></div>
+      <div class="metric"><div class="v" id="o-left">-</div><div class="k">Remaining after</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>3. Your numbers</h2>
+    <div class="grid">
+      <div><label>Three-dart average</label><input id="avg" type="number" value="55" min="1" max="130" step="0.1"></div>
+      <div><label>Cricket marks per round</label><input id="mpr" type="number" value="2.4" min="0" max="9" step="0.1"></div>
+    </div>
+    <div class="out" style="margin-top:12px">
+      <div class="metric"><div class="v" id="o-ppd">-</div><div class="k">Points per dart</div></div>
+      <div class="metric"><div class="v" id="o-leg">-</div><div class="k">Expected 501 leg (darts)</div></div>
+      <div class="metric"><div class="v" id="o-band">-</div><div class="k">Honest level band</div></div>
+      <div class="metric"><div class="v" id="o-cricket">-</div><div class="k">Cricket verdict</div></div>
+    </div>
+    <p class="note" id="o-note"></p>
+  </div>
+  <p class="note">Routes are computed optima: shortest finish, big opener, friendly double. Seven scores from 2-170 have no three-dart finish at all - 159, 162, 163, 165, 166, 168 and the famous 169.</p>
+  <p><a class="back" href="index.html">&larr; Back to DartMath</a></p>
+</main>
+<script src="engine.js"></script>
+<script>
+(function () {
+  var ids = ['score','darts','bustScore','dart','avg','mpr'];
+  function num(id) { var v = parseFloat(document.getElementById(id).value); return isFinite(v) ? v : 0; }
+  function compute() {
+    if (typeof DartMath === 'undefined') return;
+    var score = Math.round(num('score'));
+    var darts = parseInt(document.getElementById('darts').value, 10);
+    var route = DartMath.checkout(score, darts);
+    document.getElementById('o-route').textContent = route ? route.join(' - ') : 'no finish in ' + darts + ' dart' + (darts > 1 ? 's' : '');
+    document.getElementById('o-darts').textContent = route ? route.length + ' of ' + darts : '-';
+
+    var b = DartMath.applyDart(Math.round(num('bustScore')), document.getElementById('dart').value);
+    if (!b) {
+      document.getElementById('o-bust').textContent = 'unreadable dart';
+      document.getElementById('o-left').textContent = '-';
+    } else if (b.bust) {
+      document.getElementById('o-bust').textContent = 'BUST';
+      document.getElementById('o-left').textContent = 'back to ' + b.remaining;
+    } else if (b.finished) {
+      document.getElementById('o-bust').textContent = 'game shot';
+      document.getElementById('o-left').textContent = '0';
+    } else {
+      document.getElementById('o-bust').textContent = b.label + ' lands';
+      document.getElementById('o-left').textContent = b.remaining;
+    }
+
+    var avg = num('avg');
+    document.getElementById('o-ppd').textContent = avg > 0 ? DartMath.pointsPerDart(avg).toFixed(1) : '-';
+    var leg = DartMath.expectedLegDarts(avg);
+    document.getElementById('o-leg').textContent = leg ? leg + ' (' + (leg / 3).toFixed(1) + ' visits)' : '-';
+    document.getElementById('o-band').textContent = DartMath.avgBand(avg);
+    document.getElementById('o-cricket').textContent = DartMath.cricketBand(num('mpr'));
+    document.getElementById('o-note').textContent = route
+      ? 'From ' + score + ': ' + route.join(', ') + '. If the first dart drifts, count again from what is left - the engine does not sulk.'
+      : 'From ' + score + ' with ' + darts + ' dart' + (darts > 1 ? 's' : '') + ': no exact finish exists. Leave a number that has one.';
+  }
+  var presets = {
+    max: {score:170, darts:'3', bustScore:50, dart:'BULL', avg:85, mpr:3.6},
+    impossible: {score:169, darts:'3', bustScore:169, dart:'T20', avg:70, mpr:3.0},
+    pub: {score:96, darts:'3', bustScore:40, dart:'S20', avg:38, mpr:1.8},
+    league: {score:121, darts:'3', bustScore:61, dart:'T15', avg:58, mpr:2.7}
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('.presets button'), function (b) {
+    b.addEventListener('click', function () {
+      var p = presets[b.getAttribute('data-p')];
+      if (!p) return;
+      Object.keys(p).forEach(function (k) { document.getElementById(k).value = p[k]; });
+      compute();
+    });
+  });
+  ids.forEach(function (id) {
+    document.getElementById(id).addEventListener('input', compute);
+    document.getElementById(id).addEventListener('change', compute);
+  });
+  compute();
+})();
+</script>
+</body>
+</html>
